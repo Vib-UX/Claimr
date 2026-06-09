@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Camera,
   X,
   Loader2,
   Download,
@@ -18,6 +17,8 @@ import {
   CloudUpload,
   CheckCircle2,
   AlertCircle,
+  Video,
+  Square,
 } from "lucide-react";
 import type { CollectibleArt, PinnedImage } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,15 @@ type CameraStatus = "idle" | "requesting" | "granted" | "denied" | "unavailable"
 type Facing = "user" | "environment";
 type UploadStatus = "idle" | "uploading" | "pinned" | "error";
 
+/** How long the recorded "moment" clip runs (ms). */
+const RECORD_MS = 6000;
+
+interface Clip {
+  url: string;
+  blob: Blob;
+  type: string;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -48,9 +58,9 @@ interface Props {
   /** Default camera. The selfie cam puts the user in frame with the collectible. */
   defaultFacing?: Facing;
   /**
-   * Fired when the user chooses to mint after capturing the moment. When a photo
-   * was captured and pinned to IPFS, the pinned image is passed through so it can
-   * become the NFT's image.
+   * Fired when the user chooses to mint after capturing the moment. When a clip
+   * was recorded and pinned to IPFS, the pinned media is passed through so it can
+   * become the NFT's animation.
    */
   onContinue: (captured?: PinnedImage) => void;
 }
@@ -71,6 +81,22 @@ function coverCrop(sw: number, sh: number, dw: number, dh: number) {
   return { sx: (sw - cw) / 2, sy: (sh - ch) / 2, sw: cw, sh: ch };
 }
 
+/** Pick the best-supported recording container for this browser. */
+function pickMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  const candidates = [
+    "video/mp4;codecs=h264",
+    "video/mp4",
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+  ];
+  for (const t of candidates) {
+    if (MediaRecorder.isTypeSupported?.(t)) return t;
+  }
+  return "";
+}
+
 export function CaptureMoment({
   open,
   onClose,
@@ -84,13 +110,28 @@ export function CaptureMoment({
   const stageRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Recording machinery.
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const drawRafRef = useRef<number>(0);
+  const progressRafRef = useRef<number>(0);
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clipUrlRef = useRef<string | null>(null);
+
   const [status, setStatus] = useState<CameraStatus>("idle");
   const [facing, setFacing] = useState<Facing>(defaultFacing);
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [clip, setClip] = useState<Clip | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recordProgress, setRecordProgress] = useState(0);
   const [scanning, setScanning] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
   const [pinned, setPinned] = useState<PinnedImage | null>(null);
+
+  const recorderSupported =
+    typeof window !== "undefined" &&
+    typeof MediaRecorder !== "undefined" &&
+    typeof HTMLCanvasElement !== "undefined" &&
+    typeof HTMLCanvasElement.prototype.captureStream === "function";
 
   useEffect(() => setMounted(true), []);
 
@@ -138,20 +179,48 @@ export function CaptureMoment({
     [stopStream],
   );
 
+  const teardownRecording = useCallback(() => {
+    cancelAnimationFrame(drawRafRef.current);
+    cancelAnimationFrame(progressRafRef.current);
+    if (stopTimerRef.current) {
+      clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      try {
+        recorderRef.current.stop();
+      } catch {
+        /* already stopped */
+      }
+    }
+    recorderRef.current = null;
+  }, []);
+
+  const resetClip = useCallback(() => {
+    if (clipUrlRef.current) {
+      URL.revokeObjectURL(clipUrlRef.current);
+      clipUrlRef.current = null;
+    }
+    setClip(null);
+  }, []);
+
   // Open / close lifecycle: lock scroll, start the camera, clean up on close.
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = "hidden";
-    setPhoto(null);
+    resetClip();
     setPinned(null);
     setUploadStatus("idle");
+    setRecording(false);
+    setRecordProgress(0);
     setFacing(defaultFacing);
     void startCamera(defaultFacing);
     return () => {
       document.body.style.overflow = "";
+      teardownRecording();
       stopStream();
     };
-  }, [open, defaultFacing, startCamera, stopStream]);
+  }, [open, defaultFacing, startCamera, stopStream, teardownRecording, resetClip]);
 
   const flipCamera = () => {
     const next: Facing = facing === "user" ? "environment" : "user";
@@ -159,34 +228,60 @@ export function CaptureMoment({
     void startCamera(next);
   };
 
-  // Pin the captured photo to IPFS (Pinata) so it can be used as the NFT image.
-  const uploadMoment = useCallback(
-    async (dataUrl: string) => {
-      setUploadStatus("uploading");
-      setPinned(null);
-      try {
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dataUrl, filename: "claimr-moment.png" }),
-        });
-        if (!res.ok) throw new Error(`Upload failed (${res.status})`);
-        const data = (await res.json()) as PinnedImage;
-        setPinned(data);
-        setUploadStatus("pinned");
-      } catch {
-        // Non-fatal: the user can still claim; the NFT just falls back to the
-        // generated artwork instead of the photo.
-        setUploadStatus("error");
-      }
+  // Pin the recorded clip to IPFS (Pinata) so it can be used as the NFT media.
+  const uploadMoment = useCallback(async (blob: Blob, type: string) => {
+    setUploadStatus("uploading");
+    setPinned(null);
+    try {
+      const ext = type.includes("mp4") ? "mp4" : "webm";
+      const form = new FormData();
+      form.append("file", blob, `claimr-moment.${ext}`);
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+      const data = (await res.json()) as PinnedImage;
+      setPinned({ ...data, mediaType: "video" });
+      setUploadStatus("pinned");
+    } catch {
+      // Non-fatal: the user can still claim; the NFT just falls back to the
+      // generated artwork instead of the clip.
+      setUploadStatus("error");
+    }
+  }, []);
+
+  const drawWatermark = useCallback(
+    (ctx: CanvasRenderingContext2D, W: number, H: number) => {
+      const pad = Math.round(W * 0.04);
+      ctx.save();
+      ctx.textBaseline = "bottom";
+      ctx.shadowColor = "rgba(0,0,0,0.55)";
+      ctx.shadowBlur = Math.round(W * 0.02);
+      ctx.font = `600 ${Math.round(W * 0.038)}px ui-sans-serif, system-ui, sans-serif`;
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.fillText("Claimr · Proof you were there", pad, H - pad);
+      ctx.font = `500 ${Math.round(W * 0.028)}px ui-sans-serif, system-ui, sans-serif`;
+      ctx.fillStyle = "rgba(255,255,255,0.78)";
+      ctx.fillText(eventTitle, pad, H - pad - Math.round(W * 0.058));
+      ctx.restore();
     },
-    [],
+    [eventTitle],
   );
 
-  const capture = useCallback(() => {
+  const stopRecording = useCallback(() => {
+    if (stopTimerRef.current) {
+      clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
+    cancelAnimationFrame(progressRafRef.current);
+    if (recorderRef.current && recorderRef.current.state === "recording") {
+      recorderRef.current.stop();
+    }
+  }, []);
+
+  const startRecording = useCallback(() => {
     const video = videoRef.current;
     const stage = stageRef.current;
-    if (!video || !stage) return;
+    if (!video || !stage || !recorderSupported) return;
+
     const glCanvas = stage.querySelector("canvas");
     const rect = stage.getBoundingClientRect();
     const scale = Math.min(window.devicePixelRatio || 1, 2);
@@ -199,52 +294,89 @@ export function CaptureMoment({
     const ctx = out.getContext("2d");
     if (!ctx) return;
 
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-    if (vw && vh) {
-      const crop = coverCrop(vw, vh, W, H);
-      ctx.save();
-      if (facing === "user") {
-        ctx.translate(W, 0);
-        ctx.scale(-1, 1);
+    // Continuously composite the live camera + 3D overlay + watermark.
+    const draw = () => {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (vw && vh) {
+        const crop = coverCrop(vw, vh, W, H);
+        ctx.save();
+        if (facing === "user") {
+          ctx.translate(W, 0);
+          ctx.scale(-1, 1);
+        }
+        ctx.drawImage(video, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, W, H);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = "#0b0b12";
+        ctx.fillRect(0, 0, W, H);
       }
-      ctx.drawImage(video, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, W, H);
-      ctx.restore();
-    } else {
-      ctx.fillStyle = "#0b0b12";
-      ctx.fillRect(0, 0, W, H);
-    }
+      if (glCanvas) ctx.drawImage(glCanvas, 0, 0, W, H);
+      drawWatermark(ctx, W, H);
+      drawRafRef.current = requestAnimationFrame(draw);
+    };
+    draw();
 
-    if (glCanvas) {
-      ctx.drawImage(glCanvas, 0, 0, W, H);
-    }
-
-    // Subtle watermark so the saved moment is unmistakably a Claimr proof.
-    const pad = Math.round(W * 0.04);
-    ctx.font = `600 ${Math.round(W * 0.038)}px ui-sans-serif, system-ui, sans-serif`;
-    ctx.textBaseline = "bottom";
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.shadowColor = "rgba(0,0,0,0.55)";
-    ctx.shadowBlur = Math.round(W * 0.02);
-    ctx.fillText("Claimr · Proof you were there", pad, H - pad);
-    ctx.font = `500 ${Math.round(W * 0.028)}px ui-sans-serif, system-ui, sans-serif`;
-    ctx.fillStyle = "rgba(255,255,255,0.78)";
-    ctx.fillText(eventTitle, pad, H - pad - Math.round(W * 0.058));
-
+    let stream: MediaStream;
     try {
-      const dataUrl = out.toDataURL("image/png");
-      setPhoto(dataUrl);
-      void uploadMoment(dataUrl);
+      stream = out.captureStream(30);
     } catch {
-      // Capture failed (rare). Leave live view active so the user can retry.
+      cancelAnimationFrame(drawRafRef.current);
+      return;
     }
-  }, [facing, eventTitle, uploadMoment]);
 
-  const sharePhoto = useCallback(async () => {
-    if (!photo) return;
+    const mimeType = pickMimeType();
+    let recorder: MediaRecorder;
     try {
-      const blob = await (await fetch(photo)).blob();
-      const file = new File([blob], "claimr-moment.png", { type: "image/png" });
+      recorder = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType, videoBitsPerSecond: 4_000_000 } : undefined,
+      );
+    } catch {
+      cancelAnimationFrame(drawRafRef.current);
+      return;
+    }
+
+    const chunks: BlobPart[] = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunks.push(e.data);
+    };
+    recorder.onstop = () => {
+      cancelAnimationFrame(drawRafRef.current);
+      const type = recorder.mimeType || mimeType || "video/webm";
+      const blob = new Blob(chunks, { type });
+      if (clipUrlRef.current) URL.revokeObjectURL(clipUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      clipUrlRef.current = url;
+      setClip({ url, blob, type });
+      setRecording(false);
+      setRecordProgress(0);
+      void uploadMoment(blob, type);
+    };
+
+    recorderRef.current = recorder;
+    recorder.start();
+    setRecording(true);
+
+    const startedAt = performance.now();
+    const tick = () => {
+      const p = Math.min(1, (performance.now() - startedAt) / RECORD_MS);
+      setRecordProgress(p);
+      if (p < 1 && recorderRef.current?.state === "recording") {
+        progressRafRef.current = requestAnimationFrame(tick);
+      }
+    };
+    progressRafRef.current = requestAnimationFrame(tick);
+    stopTimerRef.current = setTimeout(stopRecording, RECORD_MS);
+  }, [facing, recorderSupported, drawWatermark, uploadMoment, stopRecording]);
+
+  const shareClip = useCallback(async () => {
+    if (!clip) return;
+    const ext = clip.type.includes("mp4") ? "mp4" : "webm";
+    try {
+      const file = new File([clip.blob], `claimr-moment.${ext}`, {
+        type: clip.type,
+      });
       const nav = navigator as Navigator & {
         canShare?: (data?: ShareData) => boolean;
       };
@@ -260,17 +392,26 @@ export function CaptureMoment({
       // Fall through to download on share failure / cancel.
     }
     const a = document.createElement("a");
-    a.href = photo;
-    a.download = "claimr-moment.png";
+    a.href = clip.url;
+    a.download = `claimr-moment.${ext}`;
     a.click();
-  }, [photo, eventTitle]);
+  }, [clip, eventTitle]);
+
+  const retake = useCallback(() => {
+    resetClip();
+    setPinned(null);
+    setUploadStatus("idle");
+  }, [resetClip]);
 
   const handleClose = () => {
+    teardownRecording();
     stopStream();
     onClose();
   };
 
   if (!mounted || !open) return null;
+
+  const ringCircumference = 2 * Math.PI * 32;
 
   return createPortal(
     <AnimatePresence>
@@ -280,7 +421,7 @@ export function CaptureMoment({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        {/* Stage: live camera + transparent 3D overlay (or captured still). */}
+        {/* Stage: live camera + transparent 3D overlay (or captured clip). */}
         <div ref={stageRef} className="absolute inset-0 overflow-hidden">
           <video
             ref={videoRef}
@@ -292,15 +433,15 @@ export function CaptureMoment({
           />
 
           {/* The collectible floating over the real world. Hidden while previewing
-              a still or during the initial scan. */}
-          {!photo && status === "granted" && !scanning && (
+              a clip or during the initial scan. */}
+          {!clip && status === "granted" && !scanning && (
             <div className="absolute inset-0">
               <CollectibleScene art={art} reveal interactive camera modelUrls={modelUrls} />
             </div>
           )}
 
           {/* Scanning the vicinity */}
-          {!photo && status === "granted" && scanning && (
+          {!clip && status === "granted" && scanning && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-5">
               <div className="relative grid size-44 place-items-center">
                 <motion.span
@@ -341,17 +482,30 @@ export function CaptureMoment({
             </div>
           )}
 
-          {photo && (
-            <img
-              src={photo}
-              alt="Captured moment"
+          {clip && (
+            <video
+              src={clip.url}
+              autoPlay
+              loop
+              muted
+              playsInline
               className="absolute inset-0 h-full w-full object-cover"
             />
           )}
 
+          {/* Recording indicator */}
+          {recording && (
+            <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 pt-[max(0px,env(safe-area-inset-top))]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
+                <span className="size-2 animate-pulse rounded-full bg-red-500" />
+                REC · {Math.ceil((1 - recordProgress) * (RECORD_MS / 1000))}s
+              </span>
+            </div>
+          )}
+
           {/* Permission / error states */}
           {(status === "requesting" || status === "denied" || status === "unavailable") &&
-            !photo && (
+            !clip && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-6 text-center">
                 {status === "requesting" ? (
                   <div className="flex flex-col items-center gap-3 text-white/80">
@@ -368,7 +522,7 @@ export function CaptureMoment({
                     </p>
                     <p className="text-sm text-white/65">
                       {status === "denied"
-                        ? "Enable camera permission in your browser to capture the moment, or claim without a photo."
+                        ? "Enable camera permission in your browser to capture the moment, or claim without a clip."
                         : "We couldn't reach a camera on this device. You can still claim your moment."}
                     </p>
                     {status === "denied" && (
@@ -396,7 +550,7 @@ export function CaptureMoment({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {status === "granted" && !photo && (
+            {status === "granted" && !clip && !recording && (
               <button
                 onClick={flipCamera}
                 aria-label="Switch camera"
@@ -418,31 +572,61 @@ export function CaptureMoment({
         {/* Bottom controls */}
         <div className="absolute inset-x-0 bottom-0 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-10">
           <div className="mx-auto w-full max-w-md">
-            {!photo ? (
+            {!clip ? (
               <>
                 <div className="mb-4 flex items-center justify-center">
                   <button
-                    onClick={capture}
-                    disabled={status !== "granted" || scanning}
-                    aria-label="Take photo"
-                    className="grid size-[4.5rem] place-items-center rounded-full bg-white/15 ring-2 ring-white/80 backdrop-blur transition active:scale-95 disabled:opacity-40"
+                    onClick={recording ? stopRecording : startRecording}
+                    disabled={status !== "granted" || scanning || !recorderSupported}
+                    aria-label={recording ? "Stop recording" : "Record clip"}
+                    className="relative grid size-[4.5rem] place-items-center rounded-full bg-white/15 ring-2 ring-white/80 backdrop-blur transition active:scale-95 disabled:opacity-40"
                   >
-                    <span className="grid size-14 place-items-center rounded-full bg-white text-black">
-                      <Camera className="size-6" />
-                    </span>
+                    {/* Progress ring while recording */}
+                    {recording && (
+                      <svg
+                        className="pointer-events-none absolute inset-0 -rotate-90"
+                        viewBox="0 0 72 72"
+                      >
+                        <circle
+                          cx="36"
+                          cy="36"
+                          r="32"
+                          fill="none"
+                          stroke="rgba(239,68,68,0.95)"
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          strokeDasharray={ringCircumference}
+                          strokeDashoffset={ringCircumference * (1 - recordProgress)}
+                        />
+                      </svg>
+                    )}
+                    {recording ? (
+                      <span className="grid size-14 place-items-center rounded-full bg-red-500 text-white">
+                        <Square className="size-5 fill-current" />
+                      </span>
+                    ) : (
+                      <span className="grid size-14 place-items-center rounded-full bg-white text-black">
+                        <Video className="size-6" />
+                      </span>
+                    )}
                   </button>
                 </div>
                 <Button
                   variant="gradient"
                   size="lg"
                   className="w-full"
+                  disabled={recording}
                   onClick={() => onContinue()}
                 >
                   <Sparkles className="size-4" />
                   Claim your moment onchain
                 </Button>
                 <p className="mt-2 text-center text-xs text-white/60">
-                  Snap a photo with your collectible, or claim without one
+                  {!recorderSupported
+                    ? "Recording isn't supported on this browser — claim without a clip"
+                    : recording
+                      ? "Recording your moment…"
+                      : `Record a ${RECORD_MS / 1000}s clip with your collectible, or claim without one`}
                 </p>
               </>
             ) : (
@@ -451,19 +635,11 @@ export function CaptureMoment({
                   <IpfsStatusPill status={uploadStatus} pinned={pinned} />
                 </div>
                 <div className="mb-3 grid grid-cols-2 gap-2">
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    onClick={() => {
-                      setPhoto(null);
-                      setPinned(null);
-                      setUploadStatus("idle");
-                    }}
-                  >
+                  <Button variant="secondary" size="lg" onClick={retake}>
                     <RefreshCw className="size-4" />
                     Retake
                   </Button>
-                  <Button variant="secondary" size="lg" onClick={sharePhoto}>
+                  <Button variant="secondary" size="lg" onClick={shareClip}>
                     <Share2 className="size-4" />
                     Save / share
                   </Button>
@@ -485,7 +661,7 @@ export function CaptureMoment({
                     : "Claim your moment onchain"}
                 </Button>
                 <button
-                  onClick={sharePhoto}
+                  onClick={shareClip}
                   className="mx-auto mt-2 flex items-center gap-1.5 text-xs text-white/60 hover:text-white/90"
                 >
                   <Download className="size-3.5" />
@@ -517,7 +693,7 @@ function IpfsStatusPill({
     return (
       <span className={`${base} bg-black/45 text-white/90`}>
         <Loader2 className="size-3.5 animate-spin" />
-        Pinning your moment to IPFS…
+        Pinning your clip to IPFS…
       </span>
     );
   }

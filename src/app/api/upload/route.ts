@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { PINATA_ENABLED, pinFile } from "@/lib/server/pinata";
 
 /**
- * Pins a captured "moment" photo to IPFS via Pinata.
+ * Pins a captured "moment" to IPFS via Pinata.
  *
- * The client sends the photo as a base64 data URL (the canvas export from the
- * capture screen). We decode it server-side and pin the bytes, returning the
- * CID / ipfs:// URI / gateway URL so the claim flow can use it as the NFT image.
+ * Two request shapes are supported:
+ *  - JSON `{ dataUrl, filename }` — a base64 photo (canvas export).
+ *  - multipart/form-data with a `file` field — a recorded video clip.
+ *
+ * Returns the CID / ipfs:// URI / gateway URL so the claim flow can use it as
+ * the NFT media.
  */
 
 interface UploadBody {
@@ -14,7 +17,8 @@ interface UploadBody {
   filename?: string;
 }
 
-const MAX_BYTES = 12 * 1024 * 1024; // 12 MB — generous for a single photo.
+const MAX_IMAGE_BYTES = 12 * 1024 * 1024; // 12 MB
+const MAX_VIDEO_BYTES = 40 * 1024 * 1024; // 40 MB — a short composited clip.
 
 export async function POST(req: Request) {
   if (!PINATA_ENABLED) {
@@ -22,6 +26,46 @@ export async function POST(req: Request) {
       { error: "IPFS uploads are not configured (missing PINATA_JWT)." },
       { status: 503 },
     );
+  }
+
+  const reqContentType = req.headers.get("content-type") ?? "";
+
+  // Video clips arrive as binary multipart form data.
+  if (reqContentType.includes("multipart/form-data")) {
+    let form: FormData;
+    try {
+      form = await req.formData();
+    } catch {
+      return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+    }
+    const file = form.get("file");
+    if (!(file instanceof Blob)) {
+      return NextResponse.json({ error: "Missing file" }, { status: 400 });
+    }
+    if (file.size === 0) {
+      return NextResponse.json({ error: "Empty file" }, { status: 400 });
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      return NextResponse.json({ error: "Clip too large" }, { status: 413 });
+    }
+    const contentType = file.type || "video/webm";
+    const ext = contentType.split("/")[1]?.split(";")[0] || "webm";
+    const providedName =
+      typeof form.get("filename") === "string"
+        ? (form.get("filename") as string)
+        : undefined;
+    const name = providedName || `claimr-moment-${Date.now()}.${ext}`;
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const result = await pinFile(bytes, name, contentType);
+      return NextResponse.json({ ...result, mediaType: "video" });
+    } catch (err) {
+      console.error("[upload] video pin failed", err);
+      return NextResponse.json(
+        { error: "Failed to upload clip to IPFS. Please try again." },
+        { status: 502 },
+      );
+    }
   }
 
   let body: UploadBody;
@@ -52,7 +96,7 @@ export async function POST(req: Request) {
   if (bytes.byteLength === 0) {
     return NextResponse.json({ error: "Empty image" }, { status: 400 });
   }
-  if (bytes.byteLength > MAX_BYTES) {
+  if (bytes.byteLength > MAX_IMAGE_BYTES) {
     return NextResponse.json({ error: "Image too large" }, { status: 413 });
   }
 
@@ -60,7 +104,7 @@ export async function POST(req: Request) {
     const ext = contentType.split("/")[1]?.split("+")[0] || "png";
     const name = filename || `claimr-moment-${Date.now()}.${ext}`;
     const result = await pinFile(bytes, name, contentType);
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, mediaType: "image" });
   } catch (err) {
     console.error("[upload] pin failed", err);
     return NextResponse.json(

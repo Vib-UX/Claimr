@@ -119,13 +119,15 @@ export type MintStatus =
   | "success"
   | "error";
 
-/** A photo pinned to IPFS via Pinata (the captured "moment"). */
+/** A photo or video clip pinned to IPFS via Pinata (the captured "moment"). */
 export interface PinnedImage {
   cid: string;
   /** Canonical `ipfs://<cid>` reference (used in onchain metadata). */
   ipfsUri: string;
-  /** HTTP gateway URL for rendering the image in a browser. */
+  /** HTTP gateway URL for rendering the media in a browser. */
   gatewayUrl: string;
+  /** Whether the pinned moment is a still image or a short video clip. */
+  mediaType?: "image" | "video";
 }
 
 export interface NFTMetadata {
@@ -133,6 +135,8 @@ export interface NFTMetadata {
   name: string;
   description: string;
   image: string;
+  /** Optional video clip (ERC-721 `animation_url`) when the moment was a clip. */
+  animationUrl?: string;
   eventId: string;
   attributes: { trait_type: string; value: string }[];
   metadataURI: string;

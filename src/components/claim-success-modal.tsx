@@ -32,12 +32,12 @@ export function ClaimSuccessModal({
     setReveal(false);
   }, [open]);
 
-  // Reset the image loading state whenever the moment changes; surface cached
+  // Reset the media loading state whenever the moment changes; surface cached
   // images immediately so the spinner doesn't flash.
-  const imageSrc = claim?.metadata.image;
+  const mediaSrc = claim?.metadata.animationUrl ?? claim?.metadata.image;
   useEffect(() => {
     setImgStatus(imgRef.current?.complete ? "loaded" : "loading");
-  }, [imageSrc]);
+  }, [mediaSrc]);
 
   if (!claim) return null;
 
@@ -85,18 +85,34 @@ export function ClaimSuccessModal({
                 </span>
               </div>
             )}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              ref={imgRef}
-              src={claim.metadata.image}
-              alt={`Your captured moment at ${claim.eventTitle}`}
-              onLoad={() => setImgStatus("loaded")}
-              onError={() => setImgStatus("error")}
-              className={cn(
-                "block max-h-full w-auto rounded-xl object-contain transition-opacity duration-300",
-                imgStatus === "loaded" ? "opacity-100" : "opacity-0",
-              )}
-            />
+            {claim.metadata.animationUrl ? (
+              <video
+                src={claim.metadata.animationUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                onLoadedData={() => setImgStatus("loaded")}
+                onError={() => setImgStatus("error")}
+                className={cn(
+                  "block max-h-full w-auto rounded-xl object-contain transition-opacity duration-300",
+                  imgStatus === "loaded" ? "opacity-100" : "opacity-0",
+                )}
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                ref={imgRef}
+                src={claim.metadata.image}
+                alt={`Your captured moment at ${claim.eventTitle}`}
+                onLoad={() => setImgStatus("loaded")}
+                onError={() => setImgStatus("error")}
+                className={cn(
+                  "block max-h-full w-auto rounded-xl object-contain transition-opacity duration-300",
+                  imgStatus === "loaded" ? "opacity-100" : "opacity-0",
+                )}
+              />
+            )}
             {imgStatus === "loaded" && (
               <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-1 bg-gradient-to-t from-black/55 to-transparent px-2.5 pb-2 pt-6">
                 <Sparkles className="size-3 text-white/90" />

@@ -80,6 +80,7 @@ export default function CollectiblePage({
           <Collectible3DViewer
             art={claim.art}
             imageUrl={claim.metadata.image}
+            videoUrl={claim.metadata.animationUrl}
             modelUrl={heroModelUrl}
             modelScale={0.6}
             hint={false}

@@ -27,6 +27,8 @@ interface Props {
   hint?: boolean;
   /** Optional captured-moment image rendered behind the rotating model. */
   imageUrl?: string;
+  /** Optional captured-moment video clip rendered behind the rotating model. */
+  videoUrl?: string;
   /** Explicit model to rotate (e.g. the event's Blitz collectible). */
   modelUrl?: string;
   /** Multiplier on the rotating model's size. */
@@ -40,6 +42,7 @@ export function Collectible3DViewer({
   className,
   hint = true,
   imageUrl,
+  videoUrl,
   modelUrl,
   modelScale = 1,
 }: Props) {
@@ -61,13 +64,24 @@ export function Collectible3DViewer({
         }}
       />
       {/* Captured moment behind the rotating model, when provided. */}
-      {imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={imageUrl}
-          alt="Your captured moment"
+      {videoUrl ? (
+        <video
+          src={videoUrl}
+          autoPlay
+          loop
+          muted
+          playsInline
           className="absolute inset-0 h-full w-full object-cover"
         />
+      ) : (
+        imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt="Your captured moment"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        )
       )}
       <div className="absolute inset-0">
         <CollectibleScene
