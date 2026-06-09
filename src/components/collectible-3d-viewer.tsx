@@ -25,6 +25,10 @@ interface Props {
   className?: string;
   /** Show the "drag to explore" hint. */
   hint?: boolean;
+  /** Optional captured-moment image rendered behind the rotating model. */
+  imageUrl?: string;
+  /** Explicit model to rotate (e.g. the event's Blitz collectible). */
+  modelUrl?: string;
 }
 
 export function Collectible3DViewer({
@@ -33,6 +37,8 @@ export function Collectible3DViewer({
   interactive = true,
   className,
   hint = true,
+  imageUrl,
+  modelUrl,
 }: Props) {
   return (
     <motion.div
@@ -51,8 +57,22 @@ export function Collectible3DViewer({
           background: `radial-gradient(60% 60% at 50% 45%, hsl(${art.hue} 85% 60% / 0.28), transparent 70%)`,
         }}
       />
+      {/* Captured moment behind the rotating model, when provided. */}
+      {imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt="Your captured moment"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
       <div className="absolute inset-0">
-        <CollectibleScene art={art} reveal={reveal} interactive={interactive} />
+        <CollectibleScene
+          art={art}
+          reveal={reveal}
+          interactive={interactive}
+          modelUrl={modelUrl}
+        />
       </div>
       {hint && interactive && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">

@@ -56,13 +56,13 @@ export function ClaimSuccessModal({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={reveal ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="relative mx-auto mt-3 w-full max-w-[230px] overflow-hidden rounded-2xl border border-border/60 shadow-lg"
+            className="relative mx-auto mt-3 w-full max-w-[230px] overflow-hidden rounded-2xl border border-border/60 bg-muted/40 p-1.5 shadow-lg"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={claim.metadata.image}
               alt={`Your captured moment at ${claim.eventTitle}`}
-              className="aspect-[4/5] w-full bg-muted object-cover"
+              className="mx-auto block max-h-[40vh] w-auto rounded-xl object-contain"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-1 bg-gradient-to-t from-black/55 to-transparent px-2.5 pb-2 pt-6">
               <Sparkles className="size-3 text-white/90" />

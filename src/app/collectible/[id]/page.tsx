@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowUpRight, BadgeCheck, CalendarDays } from "lucide-react";
 import { useClaimrStore } from "@/lib/store";
+import { getEventBySlug } from "@/lib/mock/events";
 import { Collectible3DViewer } from "@/components/collectible-3d-viewer";
 import { ShareCard } from "@/components/share-card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,12 @@ export default function CollectiblePage({
   useEffect(() => setMounted(true), []);
 
   const claim = claims.find((c) => c.metadata.tokenId === id);
+  // The event's Blitz collectible model (the plush is listed last) rotates over
+  // the captured moment on the hero.
+  const heroModelUrl = claim
+    ? (getEventBySlug(claim.eventSlug)?.collectible.arModelUrls?.at(-1) ??
+      claim.art.modelUrl)
+    : undefined;
 
   if (!mounted) {
     return (
@@ -70,7 +77,13 @@ export default function CollectiblePage({
           animate={{ opacity: 1, y: 0 }}
           className="lg:sticky lg:top-20 lg:self-start"
         >
-          <Collectible3DViewer art={claim.art} className="mx-auto max-w-md" />
+          <Collectible3DViewer
+            art={claim.art}
+            imageUrl={claim.metadata.image}
+            modelUrl={heroModelUrl}
+            hint={false}
+            className="mx-auto max-w-md"
+          />
         </motion.div>
 
         {/* Metadata */}
