@@ -388,7 +388,7 @@ export function CaptureMoment({
         </div>
 
         {/* Top bar */}
-        <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
+        <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))]">
           <div className="rounded-full bg-black/45 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
             <span className="inline-flex items-center gap-1.5">
               <Sparkles className="size-3.5" />

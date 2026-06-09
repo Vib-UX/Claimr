@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Environment,
   Lightformer,
@@ -202,6 +202,39 @@ if (COLLECTIBLE_MODEL_URL) {
   useGLTF.preload(COLLECTIBLE_MODEL_URL);
 }
 
+/**
+ * Pulls the camera to a distance where the content (given its half-extents in
+ * world units) fits the live viewport on any aspect ratio — so the collectible
+ * never clips on a tall portrait phone or a short landscape one. Re-runs on
+ * resize / orientation change.
+ */
+function FitCamera({
+  halfWidth,
+  halfHeight,
+}: {
+  halfWidth: number;
+  halfHeight: number;
+}) {
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const width = useThree((s) => s.size.width);
+  const height = useThree((s) => s.size.height);
+
+  useEffect(() => {
+    if (!width || !height) return;
+    const aspect = width / height;
+    const vFov = (camera.fov * Math.PI) / 180;
+    const margin = 1.35;
+    const distForHeight = (halfHeight * margin) / Math.tan(vFov / 2);
+    const hFovHalf = Math.atan(Math.tan(vFov / 2) * aspect);
+    const distForWidth = (halfWidth * margin) / Math.tan(hFovHalf);
+    const dist = Math.max(distForHeight, distForWidth, 4.5);
+    camera.position.set(0, 0, dist);
+    camera.updateProjectionMatrix();
+  }, [camera, width, height, halfWidth, halfHeight]);
+
+  return null;
+}
+
 export default function CollectibleScene({
   art,
   reveal = true,
@@ -229,6 +262,20 @@ export default function CollectibleScene({
       : effectiveModel
         ? [effectiveModel]
         : [];
+
+  const count = models.length;
+  const groupScaleMul = count > 1 ? 0.62 : 1;
+  const cameraMul = camera ? 0.7 : 1;
+  const spread = count > 1 ? ((count - 1) / 2) * 2.3 : 0;
+  // Rendered half-size of one model (its max dimension is normalized to
+  // MODEL_TARGET_SIZE before the scale multipliers are applied).
+  const perHalf =
+    (MODEL_TARGET_SIZE * COLLECTIBLE_MODEL_SCALE * groupScaleMul * cameraMul) /
+    2;
+  // Camera mode stacks the models vertically, so the content is tallest there.
+  const fitHalfHeight = spread + perHalf;
+  const fitHalfWidth = perHalf;
+
   return (
     <Canvas
       camera={{ position: [0, 0.4, 6], fov: 35 }}
@@ -236,6 +283,9 @@ export default function CollectibleScene({
       gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
       style={{ touchAction: "pan-y" }}
     >
+      {camera && (
+        <FitCamera halfWidth={fitHalfWidth} halfHeight={fitHalfHeight} />
+      )}
       <ambientLight intensity={0.6} />
       <directionalLight position={[4, 6, 4]} intensity={1.2} />
       <pointLight
@@ -248,11 +298,7 @@ export default function CollectibleScene({
         <Float speed={1.4} rotationIntensity={0.5} floatIntensity={0.7}>
           {models.length > 0 ? (
             models.map((url, i) => {
-              const count = models.length;
               const offset = count === 1 ? 0 : (i - (count - 1) / 2) * 2.3;
-              const scaleMul = count > 1 ? 0.62 : 1;
-              // On the mobile camera feed keep the collectible compact.
-              const cameraMul = camera ? 0.7 : 1;
               // Stack vertically (top/bottom) on the portrait camera feed,
               // otherwise lay the models out side by side.
               const position: [number, number, number] = camera
@@ -264,7 +310,7 @@ export default function CollectibleScene({
                   url={url}
                   reveal={reveal}
                   position={position}
-                  scaleMul={scaleMul * cameraMul}
+                  scaleMul={groupScaleMul * cameraMul}
                 />
               );
             })
