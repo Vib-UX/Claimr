@@ -1,6 +1,6 @@
 "use client";
 
-import type { ClaimrEvent, Claim, MintStatus } from "@/lib/types";
+import type { ClaimrEvent, Claim, MintStatus, PinnedImage } from "@/lib/types";
 import { sleep } from "@/lib/utils";
 
 interface ClaimArgs {
@@ -8,6 +8,8 @@ interface ClaimArgs {
   wallet: string;
   email?: string;
   coords?: { lat: number; lng: number };
+  /** The captured "moment" photo pinned to IPFS, used as the NFT image. */
+  capturedImage?: PinnedImage;
   getAccessToken: () => Promise<string | null>;
   onProgress?: (phase: Exclude<MintStatus, "idle" | "success" | "error">) => void;
 }
@@ -23,6 +25,7 @@ export async function claimMoment({
   wallet,
   email,
   coords,
+  capturedImage,
   getAccessToken,
   onProgress,
 }: ClaimArgs): Promise<Claim> {
@@ -42,6 +45,8 @@ export async function claimMoment({
       email,
       coords,
       accessToken,
+      imageIpfsUri: capturedImage?.ipfsUri,
+      imageGatewayUrl: capturedImage?.gatewayUrl,
     }),
   });
 

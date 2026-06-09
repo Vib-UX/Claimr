@@ -14,6 +14,7 @@ import {
   publicClient,
   getMinterWallet,
 } from "@/lib/server/minter";
+import { PINATA_ENABLED, pinJSON } from "@/lib/server/pinata";
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "";
 const PRIVY_APP_SECRET = process.env.PRIVY_APP_SECRET ?? "";
@@ -24,6 +25,9 @@ interface ClaimBody {
   email?: string;
   coords?: { lat: number; lng: number };
   accessToken?: string;
+  /** Captured "moment" photo pinned to IPFS (ipfs://… + gateway URL). */
+  imageIpfsUri?: string;
+  imageGatewayUrl?: string;
 }
 
 async function verifyPrivyToken(accessToken?: string): Promise<boolean> {
@@ -47,7 +51,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { slug, address, email, coords, accessToken } = body;
+  const { slug, address, email, coords, accessToken, imageIpfsUri, imageGatewayUrl } =
+    body;
 
   if (!address || !isAddress(address)) {
     return NextResponse.json({ error: "Invalid wallet address" }, { status: 400 });
@@ -93,8 +98,42 @@ export async function POST(req: Request) {
   }
 
   const origin = new URL(req.url).origin;
-  const tokenURI = `${origin}/api/metadata/${event.slug}`;
-  const image = `${origin}/api/collectible/${event.slug}`;
+
+  // Default token metadata: per-event endpoint + generated SVG artwork.
+  let tokenURI = `${origin}/api/metadata/${event.slug}`;
+  let image = `${origin}/api/collectible/${event.slug}`;
+
+  // When the attendee captured a moment and it was pinned to IPFS, pin a fresh
+  // ERC-721 metadata JSON pointing at their photo and use it as the tokenURI so
+  // the NFT image is the captured moment (permanently on IPFS).
+  if (imageIpfsUri && PINATA_ENABLED) {
+    try {
+      const metadataJson = {
+        name: event.collectible.name,
+        description: event.collectible.description,
+        image: imageIpfsUri,
+        external_url: `${origin}/event/${event.slug}`,
+        attributes: [
+          { trait_type: "Event", value: event.title },
+          { trait_type: "Edition", value: event.collectible.art.edition },
+          { trait_type: "City", value: event.venue.city },
+          { trait_type: "Variant", value: event.collectible.art.variant },
+          { trait_type: "Network", value: "Monad Testnet" },
+          { trait_type: "Verification", value: "Geo + Email" },
+        ],
+      };
+      const pinnedMeta = await pinJSON(
+        metadataJson,
+        `claimr-${event.slug}-${Date.now()}.json`,
+      );
+      tokenURI = pinnedMeta.ipfsUri;
+      image = imageGatewayUrl ?? image;
+    } catch (err) {
+      // Pinning failed — fall back to the generated artwork so the claim still
+      // succeeds.
+      console.error("[claim] metadata pin failed; using generated art", err);
+    }
+  }
 
   // 4a. Mock fallback (no contract / minter configured yet) — keeps the flow
   // working before deployment.

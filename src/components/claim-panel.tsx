@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { PartyPopper, Sparkles, Lock, Ticket, Camera } from "lucide-react";
-import type { ClaimrEvent, Claim, MintStatus } from "@/lib/types";
+import type { ClaimrEvent, Claim, MintStatus, PinnedImage } from "@/lib/types";
 import { useClaimrAuth } from "@/lib/auth/context";
 import { useClaimrStore } from "@/lib/store";
 import { useGeofence } from "@/hooks/use-geofence";
@@ -114,7 +114,7 @@ export function ClaimPanel({ event }: { event: ClaimrEvent }) {
     mintStatus !== "success" &&
     mintStatus !== "error";
 
-  const handleClaim = async () => {
+  const handleClaim = async (capturedImage?: PinnedImage) => {
     if (!eligible || !wallet) return;
     setCaptureOpen(false);
     setMintStatus("preparing");
@@ -124,6 +124,7 @@ export function ClaimPanel({ event }: { event: ClaimrEvent }) {
         wallet,
         email,
         coords: geo.coords,
+        capturedImage,
         getAccessToken,
         onProgress: (phase) => setMintStatus(phase),
       });

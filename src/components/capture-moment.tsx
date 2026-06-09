@@ -15,8 +15,11 @@ import {
   SwitchCamera,
   CameraOff,
   ScanLine,
+  CloudUpload,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
-import type { CollectibleArt } from "@/lib/types";
+import type { CollectibleArt, PinnedImage } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
 const CollectibleScene = dynamic(
@@ -33,6 +36,7 @@ const CollectibleScene = dynamic(
 
 type CameraStatus = "idle" | "requesting" | "granted" | "denied" | "unavailable";
 type Facing = "user" | "environment";
+type UploadStatus = "idle" | "uploading" | "pinned" | "error";
 
 interface Props {
   open: boolean;
@@ -43,8 +47,12 @@ interface Props {
   modelUrls?: string[];
   /** Default camera. The selfie cam puts the user in frame with the collectible. */
   defaultFacing?: Facing;
-  /** Fired when the user chooses to mint after capturing the moment. */
-  onContinue: () => void;
+  /**
+   * Fired when the user chooses to mint after capturing the moment. When a photo
+   * was captured and pinned to IPFS, the pinned image is passed through so it can
+   * become the NFT's image.
+   */
+  onContinue: (captured?: PinnedImage) => void;
 }
 
 /** Source crop so the video fills a w×h box while preserving aspect (object-fit: cover). */
@@ -81,6 +89,8 @@ export function CaptureMoment({
   const [photo, setPhoto] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
+  const [pinned, setPinned] = useState<PinnedImage | null>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -133,6 +143,8 @@ export function CaptureMoment({
     if (!open) return;
     document.body.style.overflow = "hidden";
     setPhoto(null);
+    setPinned(null);
+    setUploadStatus("idle");
     setFacing(defaultFacing);
     void startCamera(defaultFacing);
     return () => {
@@ -146,6 +158,30 @@ export function CaptureMoment({
     setFacing(next);
     void startCamera(next);
   };
+
+  // Pin the captured photo to IPFS (Pinata) so it can be used as the NFT image.
+  const uploadMoment = useCallback(
+    async (dataUrl: string) => {
+      setUploadStatus("uploading");
+      setPinned(null);
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl, filename: "claimr-moment.png" }),
+        });
+        if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+        const data = (await res.json()) as PinnedImage;
+        setPinned(data);
+        setUploadStatus("pinned");
+      } catch {
+        // Non-fatal: the user can still claim; the NFT just falls back to the
+        // generated artwork instead of the photo.
+        setUploadStatus("error");
+      }
+    },
+    [],
+  );
 
   const capture = useCallback(() => {
     const video = videoRef.current;
@@ -196,11 +232,13 @@ export function CaptureMoment({
     ctx.fillText(eventTitle, pad, H - pad - Math.round(W * 0.058));
 
     try {
-      setPhoto(out.toDataURL("image/png"));
+      const dataUrl = out.toDataURL("image/png");
+      setPhoto(dataUrl);
+      void uploadMoment(dataUrl);
     } catch {
       // Capture failed (rare). Leave live view active so the user can retry.
     }
-  }, [facing, eventTitle]);
+  }, [facing, eventTitle, uploadMoment]);
 
   const sharePhoto = useCallback(async () => {
     if (!photo) return;
@@ -398,7 +436,7 @@ export function CaptureMoment({
                   variant="gradient"
                   size="lg"
                   className="w-full"
-                  onClick={onContinue}
+                  onClick={() => onContinue()}
                 >
                   <Sparkles className="size-4" />
                   Claim your moment onchain
@@ -409,11 +447,18 @@ export function CaptureMoment({
               </>
             ) : (
               <>
+                <div className="mb-3 flex items-center justify-center">
+                  <IpfsStatusPill status={uploadStatus} pinned={pinned} />
+                </div>
                 <div className="mb-3 grid grid-cols-2 gap-2">
                   <Button
                     variant="secondary"
                     size="lg"
-                    onClick={() => setPhoto(null)}
+                    onClick={() => {
+                      setPhoto(null);
+                      setPinned(null);
+                      setUploadStatus("idle");
+                    }}
                   >
                     <RefreshCw className="size-4" />
                     Retake
@@ -427,10 +472,17 @@ export function CaptureMoment({
                   variant="gradient"
                   size="lg"
                   className="w-full"
-                  onClick={onContinue}
+                  disabled={uploadStatus === "uploading"}
+                  onClick={() => onContinue(pinned ?? undefined)}
                 >
-                  <Sparkles className="size-4" />
-                  Claim your moment onchain
+                  {uploadStatus === "uploading" ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="size-4" />
+                  )}
+                  {uploadStatus === "uploading"
+                    ? "Pinning to IPFS…"
+                    : "Claim your moment onchain"}
                 </Button>
                 <button
                   onClick={sharePhoto}
@@ -446,5 +498,49 @@ export function CaptureMoment({
       </motion.div>
     </AnimatePresence>,
     document.body,
+  );
+}
+
+function IpfsStatusPill({
+  status,
+  pinned,
+}: {
+  status: UploadStatus;
+  pinned: PinnedImage | null;
+}) {
+  if (status === "idle") return null;
+
+  const base =
+    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium backdrop-blur";
+
+  if (status === "uploading") {
+    return (
+      <span className={`${base} bg-black/45 text-white/90`}>
+        <Loader2 className="size-3.5 animate-spin" />
+        Pinning your moment to IPFS…
+      </span>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <span className={`${base} bg-[color-mix(in_oklab,red_30%,black)]/60 text-white`}>
+        <AlertCircle className="size-3.5" />
+        IPFS upload failed — you can still claim
+      </span>
+    );
+  }
+
+  return (
+    <a
+      href={pinned?.gatewayUrl}
+      target="_blank"
+      rel="noreferrer"
+      className={`${base} bg-[color-mix(in_oklab,limegreen_28%,black)]/55 text-white hover:opacity-90`}
+    >
+      <CheckCircle2 className="size-3.5" />
+      Pinned to IPFS
+      <CloudUpload className="size-3.5 opacity-70" />
+    </a>
   );
 }

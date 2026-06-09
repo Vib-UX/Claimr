@@ -119,6 +119,15 @@ export type MintStatus =
   | "success"
   | "error";
 
+/** A photo pinned to IPFS via Pinata (the captured "moment"). */
+export interface PinnedImage {
+  cid: string;
+  /** Canonical `ipfs://<cid>` reference (used in onchain metadata). */
+  ipfsUri: string;
+  /** HTTP gateway URL for rendering the image in a browser. */
+  gatewayUrl: string;
+}
+
 export interface NFTMetadata {
   tokenId: string;
   name: string;
