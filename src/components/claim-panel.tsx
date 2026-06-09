@@ -9,6 +9,7 @@ import { useClaimrStore } from "@/lib/store";
 import { useGeofence } from "@/hooks/use-geofence";
 import { checkWhitelist } from "@/lib/mock/whitelist";
 import { claimMoment } from "@/lib/claim-service";
+import { ALLOW_MULTIPLE_CLAIMS } from "@/lib/config";
 import {
   EligibilityChecklist,
   type CheckState,
@@ -37,6 +38,8 @@ export function ClaimPanel({ event }: { event: ClaimrEvent }) {
 
   const existingClaim = claims.find((c) => c.eventId === event.id);
   const alreadyClaimed = Boolean(existingClaim);
+  // In testing mode a wallet may re-claim, so a prior claim never blocks.
+  const claimBlocked = alreadyClaimed && !ALLOW_MULTIPLE_CLAIMS;
 
   // Run whitelist / email-verification check once signed in.
   useEffect(() => {
@@ -89,20 +92,22 @@ export function ClaimPanel({ event }: { event: ClaimrEvent }) {
       },
       {
         key: "claimed",
-        label: "Not yet claimed",
-        description: alreadyClaimed
-          ? "You've already claimed this moment"
-          : "One collectible per attendee",
-        state: alreadyClaimed ? "fail" : authenticated ? "pass" : "pending",
+        label: ALLOW_MULTIPLE_CLAIMS ? "Ready to claim" : "Not yet claimed",
+        description: ALLOW_MULTIPLE_CLAIMS
+          ? "Testing mode — multiple claims allowed"
+          : alreadyClaimed
+            ? "You've already claimed this moment"
+            : "One collectible per attendee",
+        state: claimBlocked ? "fail" : authenticated ? "pass" : "pending",
       },
     ];
-  }, [authenticated, email, geo.status, whitelist, alreadyClaimed]);
+  }, [authenticated, email, geo.status, whitelist, alreadyClaimed, claimBlocked]);
 
   const eligible =
     authenticated &&
     geo.status === "inside" &&
     whitelist === "pass" &&
-    !alreadyClaimed;
+    !claimBlocked;
 
   const minting =
     mintStatus !== "idle" &&
@@ -152,7 +157,7 @@ export function ClaimPanel({ event }: { event: ClaimrEvent }) {
       </div>
 
       {/* Already claimed state */}
-      {alreadyClaimed && existingClaim ? (
+      {claimBlocked && existingClaim ? (
         <div className="mt-5 rounded-2xl border border-[color-mix(in_oklab,var(--success)_40%,transparent)] bg-[color-mix(in_oklab,var(--success)_7%,transparent)] p-4 text-center">
           <PartyPopper className="mx-auto size-6 text-[var(--success)]" />
           <p className="mt-2 font-medium">You captured this moment</p>

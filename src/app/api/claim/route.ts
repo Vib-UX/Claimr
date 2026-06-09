@@ -7,6 +7,7 @@ import { checkWhitelist } from "@/lib/mock/whitelist";
 import { mintPoap } from "@/lib/mock/mint";
 import { explorerTxUrl } from "@/lib/chain";
 import { claimrPoapAbi, onchainEventId } from "@/lib/poap-abi";
+import { ALLOW_MULTIPLE_CLAIMS } from "@/lib/config";
 import {
   ONCHAIN_ENABLED,
   POAP_ADDRESS,
@@ -106,21 +107,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ claim, onchain: false });
   }
 
-  // 4b. Real onchain mint
-  const eventIdHash = onchainEventId(event.id);
+  // 4b. Real onchain mint.
+  // When multiple claims are allowed (testing), derive a unique on-chain event
+  // id per mint so the soulbound contract never reverts with AlreadyClaimed.
+  const eventIdHash = ALLOW_MULTIPLE_CLAIMS
+    ? onchainEventId(
+        `${event.id}#${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      )
+    : onchainEventId(event.id);
 
   try {
-    const already = await publicClient.readContract({
-      address: POAP_ADDRESS,
-      abi: claimrPoapAbi,
-      functionName: "hasClaimed",
-      args: [eventIdHash, address],
-    });
-    if (already) {
-      return NextResponse.json(
-        { error: "This wallet already claimed this event" },
-        { status: 409 },
-      );
+    if (!ALLOW_MULTIPLE_CLAIMS) {
+      const already = await publicClient.readContract({
+        address: POAP_ADDRESS,
+        abi: claimrPoapAbi,
+        functionName: "hasClaimed",
+        args: [eventIdHash, address],
+      });
+      if (already) {
+        return NextResponse.json(
+          { error: "This wallet already claimed this event" },
+          { status: 409 },
+        );
+      }
     }
 
     const { walletClient } = getMinterWallet();
