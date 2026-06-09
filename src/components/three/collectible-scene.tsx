@@ -152,7 +152,17 @@ function Artifact({ art, reveal }: { art: CollectibleArt; reveal: boolean }) {
  *  GLB at a consistent "medium" size regardless of its native scale. */
 const MODEL_TARGET_SIZE = 2.2;
 
-function GltfArtifact({ url, reveal }: { url: string; reveal: boolean }) {
+function GltfArtifact({
+  url,
+  reveal,
+  position = [0, 0, 0],
+  scaleMul = 1,
+}: {
+  url: string;
+  reveal: boolean;
+  position?: [number, number, number];
+  scaleMul?: number;
+}) {
   const group = useRef<THREE.Group>(null);
   const revealRef = useRef(0);
   const { scene } = useGLTF(url);
@@ -172,13 +182,15 @@ function GltfArtifact({ url, reveal }: { url: string; reveal: boolean }) {
     const target = reveal ? 1 : 0.0001;
     revealRef.current = THREE.MathUtils.damp(revealRef.current, target, 4, delta);
     if (group.current) {
-      group.current.scale.setScalar(revealRef.current * fit * COLLECTIBLE_MODEL_SCALE);
+      group.current.scale.setScalar(
+        revealRef.current * fit * COLLECTIBLE_MODEL_SCALE * scaleMul,
+      );
       group.current.rotation.y += delta * 0.25;
     }
   });
 
   return (
-    <group ref={group} scale={0.0001}>
+    <group ref={group} position={position} scale={0.0001}>
       <group position={[-center.x, -center.y, -center.z]}>
         <primitive object={model} />
       </group>
@@ -194,11 +206,25 @@ export default function CollectibleScene({
   art,
   reveal = true,
   interactive = true,
+  modelUrl,
+  modelUrls,
 }: {
   art: CollectibleArt;
   reveal?: boolean;
   interactive?: boolean;
+  /** Explicit model override (e.g. the camera/AR model). Falls back to the
+   *  art's model, then the global default, then the procedural artifact. */
+  modelUrl?: string;
+  /** Render multiple models side by side (e.g. a paired camera reveal). */
+  modelUrls?: string[];
 }) {
+  const effectiveModel = modelUrl ?? art.modelUrl ?? COLLECTIBLE_MODEL_URL;
+  const models =
+    modelUrls && modelUrls.length > 0
+      ? modelUrls
+      : effectiveModel
+        ? [effectiveModel]
+        : [];
   return (
     <Canvas
       camera={{ position: [0, 0.4, 6], fov: 35 }}
@@ -216,11 +242,21 @@ export default function CollectibleScene({
 
       <Suspense fallback={null}>
         <Float speed={1.4} rotationIntensity={0.5} floatIntensity={0.7}>
-          {art.modelUrl || COLLECTIBLE_MODEL_URL ? (
-            <GltfArtifact
-              url={(art.modelUrl ?? COLLECTIBLE_MODEL_URL) as string}
-              reveal={reveal}
-            />
+          {models.length > 0 ? (
+            models.map((url, i) => {
+              const count = models.length;
+              const x = count === 1 ? 0 : (i - (count - 1) / 2) * 2.3;
+              const scaleMul = count > 1 ? 0.62 : 1;
+              return (
+                <GltfArtifact
+                  key={`${url}-${i}`}
+                  url={url}
+                  reveal={reveal}
+                  position={[x, 0, 0]}
+                  scaleMul={scaleMul}
+                />
+              );
+            })
           ) : (
             <Artifact art={art} reveal={reveal} />
           )}

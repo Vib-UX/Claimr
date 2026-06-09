@@ -39,6 +39,8 @@ interface Props {
   onClose: () => void;
   art: CollectibleArt;
   eventTitle: string;
+  /** Optional camera-specific models (rendered side by side over the feed). */
+  modelUrls?: string[];
   /** Default camera. The selfie cam puts the user in frame with the collectible. */
   defaultFacing?: Facing;
   /** Fired when the user chooses to mint after capturing the moment. */
@@ -66,6 +68,7 @@ export function CaptureMoment({
   onClose,
   art,
   eventTitle,
+  modelUrls,
   defaultFacing = "user",
   onContinue,
 }: Props) {
@@ -254,7 +257,7 @@ export function CaptureMoment({
               a still or during the initial scan. */}
           {!photo && status === "granted" && !scanning && (
             <div className="absolute inset-0">
-              <CollectibleScene art={art} reveal interactive />
+              <CollectibleScene art={art} reveal interactive modelUrls={modelUrls} />
             </div>
           )}
 

@@ -6,8 +6,10 @@
  * "Capture the moment" AR camera overlay). Leave as `null` to use the built-in
  * procedural "memory capsule".
  */
-export const COLLECTIBLE_MODEL_URL: string | null = "/models/collectible.glb";
-// Set back to `null` to use the built-in procedural "memory capsule".
+export const COLLECTIBLE_MODEL_URL: string | null = null;
+// Set to "/models/collectible.glb" to use a custom model as the global default.
+// (Left `null` so the home + general viewers keep the procedural "memory capsule";
+//  the Blitz camera supplies its own model via `collectible.arModelUrl`.)
 
 /**
  * Fine multiplier on top of the automatic bounding-box fit. The model is first

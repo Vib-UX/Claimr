@@ -29,12 +29,26 @@ export const EVENTS: ClaimrEvent[] = [
     },
     hosts: [
       { id: "h1", name: "Monad Foundation", role: "Host", handle: "@monad" },
-      { id: "h2", name: "Cortex Global", role: "Co-host", handle: "@cortexglobal" },
-      { id: "h3", name: "Ava Lindqvist", role: "Curator", handle: "@avabuilds" },
+      {
+        id: "h2",
+        name: "Cortex Global",
+        role: "Co-host",
+        handle: "@cortexglobal",
+      },
+      {
+        id: "h3",
+        name: "Ava Lindqvist",
+        role: "Curator",
+        handle: "@avabuilds",
+      },
     ],
     speakers: [
       { id: "s1", name: "Keone Hon", title: "On parallel execution at scale" },
-      { id: "s2", name: "Priya Raman", title: "Embedded wallets for the next billion" },
+      {
+        id: "s2",
+        name: "Priya Raman",
+        title: "Embedded wallets for the next billion",
+      },
       { id: "s3", name: "Marcus Cole", title: "Agents that transact" },
       { id: "s4", name: "Lena Ortiz", title: "Designing high-trust crypto UX" },
     ],
@@ -44,7 +58,8 @@ export const EVENTS: ClaimrEvent[] = [
         startISO: "2026-06-18T18:00:00-04:00",
         endISO: "2026-06-18T18:45:00-04:00",
         title: "Doors & onboarding",
-        description: "Check in, claim your spot, and get an embedded wallet in seconds.",
+        description:
+          "Check in, claim your spot, and get an embedded wallet in seconds.",
         track: "Welcome",
       },
       {
@@ -85,7 +100,7 @@ export const EVENTS: ClaimrEvent[] = [
     verifiedCount: 401,
     capacity: 700,
     collectible: {
-      name: "Monad Blitz NYC — Proof of Presence",
+      name: "Proof of Presence",
       symbol: "BLITZ",
       description:
         "A verified onchain memory from Monad Blitz NYC. Proof you were there.",
@@ -94,8 +109,11 @@ export const EVENTS: ClaimrEvent[] = [
         accentHue: 200,
         edition: "NYC · 2026",
         variant: "capsule",
-        modelUrl: "/models/Meshy_AI_Purple_Sad_Plush_Mons_0609185227_texture.glb",
       },
+      arModelUrls: [
+        "/models/collectible.glb",
+        "/models/Meshy_AI_Purple_Sad_Plush_Mons_0609185227_texture.glb",
+      ],
     },
     chainId: 10143,
   },
@@ -122,11 +140,24 @@ export const EVENTS: ClaimrEvent[] = [
     },
     hosts: [
       { id: "h1", name: "ETHGlobal", role: "Host", handle: "@ethglobal" },
-      { id: "h2", name: "Kartik Talwar", role: "Co-host", handle: "@kartiktalwar" },
+      {
+        id: "h2",
+        name: "Kartik Talwar",
+        role: "Co-host",
+        handle: "@kartiktalwar",
+      },
     ],
     speakers: [
-      { id: "s1", name: "Dr. Elena Cho", title: "Tokenized treasuries at scale" },
-      { id: "s2", name: "Marcus Reyes", title: "Institutional custody onchain" },
+      {
+        id: "s1",
+        name: "Dr. Elena Cho",
+        title: "Tokenized treasuries at scale",
+      },
+      {
+        id: "s2",
+        name: "Marcus Reyes",
+        title: "Institutional custody onchain",
+      },
       { id: "s3", name: "Priya Nair", title: "Compliance-native DeFi" },
       { id: "s4", name: "Tomás Vidal", title: "Settlement rails for TradFi" },
     ],
@@ -173,7 +204,12 @@ export const EVENTS: ClaimrEvent[] = [
       symbol: "ETHCONF",
       description:
         "A verified onchain memory from ETHConf 2026 at the Javits Center.",
-      art: { hue: 252, accentHue: 286, edition: "NYC · 2026", variant: "prism" },
+      art: {
+        hue: 252,
+        accentHue: 286,
+        edition: "NYC · 2026",
+        variant: "prism",
+      },
     },
     chainId: 10143,
   },
@@ -205,7 +241,11 @@ export const EVENTS: ClaimrEvent[] = [
       { id: "s1", name: "Nadia Brooks", title: "Judge · Infrastructure" },
       { id: "s2", name: "Leo Tanaka", title: "Judge · Consumer apps" },
       { id: "s3", name: "Sam Okafor", title: "Workshop · Onchain agents" },
-      { id: "s4", name: "Maya Fischer", title: "Workshop · Account abstraction" },
+      {
+        id: "s4",
+        name: "Maya Fischer",
+        title: "Workshop · Account abstraction",
+      },
     ],
     schedule: [
       {
@@ -274,7 +314,9 @@ export const EVENTS: ClaimrEvent[] = [
       center: { lat: 38.7036, lng: -9.1781 },
       radiusMeters: 220,
     },
-    hosts: [{ id: "h1", name: "Monad Foundation", role: "Host", handle: "@monad" }],
+    hosts: [
+      { id: "h1", name: "Monad Foundation", role: "Host", handle: "@monad" },
+    ],
     speakers: [
       { id: "s1", name: "João Almeida", title: "EVM at 10,000 TPS" },
       { id: "s2", name: "Sofia Marques", title: "Onchain memories" },
@@ -310,7 +352,12 @@ export const EVENTS: ClaimrEvent[] = [
       name: "Monad Blitz Lisbon — Proof of Presence",
       symbol: "BLITZ",
       description: "A verified onchain memory from Monad Blitz Lisbon.",
-      art: { hue: 200, accentHue: 268, edition: "LIS · 2026", variant: "prism" },
+      art: {
+        hue: 200,
+        accentHue: 268,
+        edition: "LIS · 2026",
+        variant: "prism",
+      },
     },
     chainId: 10143,
   },

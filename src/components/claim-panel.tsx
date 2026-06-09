@@ -242,6 +242,7 @@ export function ClaimPanel({ event }: { event: ClaimrEvent }) {
         onClose={() => setCaptureOpen(false)}
         art={event.collectible.art}
         eventTitle={event.title}
+        modelUrls={event.collectible.arModelUrls}
         defaultFacing="user"
         onContinue={handleClaim}
       />

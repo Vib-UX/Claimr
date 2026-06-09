@@ -84,6 +84,10 @@ export interface ClaimrEvent {
     symbol: string;
     description: string;
     art: CollectibleArt;
+    /** Optional models shown only in the "Capture the moment" camera overlay
+     *  (rendered side by side). Everything else (home, viewer, reveal) uses the
+     *  standard art model. */
+    arModelUrls?: string[];
   };
   chainId: number;
 }
