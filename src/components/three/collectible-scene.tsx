@@ -256,16 +256,21 @@ export default function CollectibleScene({
           {models.length > 0 ? (
             models.map((url, i) => {
               const count = models.length;
-              const x = count === 1 ? 0 : (i - (count - 1) / 2) * 2.3;
+              const offset = count === 1 ? 0 : (i - (count - 1) / 2) * 2.3;
               const scaleMul = count > 1 ? 0.62 : 1;
               // On the mobile camera feed keep the collectible compact.
               const cameraMul = camera ? 0.7 : 1;
+              // Stack vertically (top/bottom) on the portrait camera feed,
+              // otherwise lay the models out side by side.
+              const position: [number, number, number] = camera
+                ? [0, -offset, 0]
+                : [offset, 0, 0];
               return (
                 <GltfArtifact
                   key={`${url}-${i}`}
                   url={url}
                   reveal={reveal}
-                  position={[x, 0, 0]}
+                  position={position}
                   scaleMul={scaleMul * cameraMul}
                   flip={camera}
                 />
