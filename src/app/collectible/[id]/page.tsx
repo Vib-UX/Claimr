@@ -75,7 +75,7 @@ export default function CollectiblePage({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="lg:sticky lg:top-20 lg:self-start"
+          className="min-w-0 lg:sticky lg:top-20 lg:self-start"
         >
           <Collectible3DViewer
             art={claim.art}
@@ -88,7 +88,7 @@ export default function CollectiblePage({
         </motion.div>
 
         {/* Metadata */}
-        <div>
+        <div className="min-w-0">
           <Badge variant="success">
             <BadgeCheck className="size-3.5" />
             Verified onchain
@@ -112,7 +112,7 @@ export default function CollectiblePage({
             {claim.metadata.attributes.map((attr) => (
               <div
                 key={attr.trait_type}
-                className="rounded-xl border border-border bg-card p-3"
+                className="min-w-0 rounded-xl border border-border bg-card p-3"
               >
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                   {attr.trait_type}
@@ -124,30 +124,32 @@ export default function CollectiblePage({
 
           {/* Onchain details */}
           <div className="mt-6 rounded-2xl border border-border bg-card p-4 text-sm">
-            <div className="flex items-center justify-between py-1.5">
-              <span className="text-muted-foreground">Token ID</span>
+            <div className="flex items-center justify-between gap-3 py-1.5">
+              <span className="shrink-0 text-muted-foreground">Token ID</span>
               <span className="font-mono">#{claim.metadata.tokenId}</span>
             </div>
-            <div className="flex items-center justify-between py-1.5">
-              <span className="text-muted-foreground">Owner</span>
-              <span className="font-mono">{shortenAddress(claim.wallet, 5)}</span>
+            <div className="flex items-center justify-between gap-3 py-1.5">
+              <span className="shrink-0 text-muted-foreground">Owner</span>
+              <span className="truncate font-mono">
+                {shortenAddress(claim.wallet, 5)}
+              </span>
             </div>
-            <div className="flex items-center justify-between py-1.5">
-              <span className="text-muted-foreground">Metadata</span>
-              <span className="max-w-[55%] truncate font-mono text-xs">
+            <div className="flex items-center justify-between gap-3 py-1.5">
+              <span className="shrink-0 text-muted-foreground">Metadata</span>
+              <span className="min-w-0 truncate font-mono text-xs">
                 {claim.metadata.metadataURI}
               </span>
             </div>
-            <div className="flex items-center justify-between py-1.5">
-              <span className="text-muted-foreground">Transaction</span>
+            <div className="flex items-center justify-between gap-3 py-1.5">
+              <span className="shrink-0 text-muted-foreground">Transaction</span>
               <a
                 href={claim.blockExplorerUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 font-mono text-primary hover:underline"
+                className="inline-flex min-w-0 items-center gap-1 font-mono text-primary hover:underline"
               >
-                {shortenAddress(claim.txHash)}
-                <ArrowUpRight className="size-3.5" />
+                <span className="truncate">{shortenAddress(claim.txHash)}</span>
+                <ArrowUpRight className="size-3.5 shrink-0" />
               </a>
             </div>
           </div>
