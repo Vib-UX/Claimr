@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowUpRight, ImageOff, Loader2, Sparkles } from "lucide-react";
 import type { Claim } from "@/lib/types";
 import { Modal } from "@/components/ui/modal";
 import { buttonVariants } from "@/components/ui/button";
-import { shortenAddress } from "@/lib/utils";
+import { cn, shortenAddress } from "@/lib/utils";
 
 export function ClaimSuccessModal({
   open,
@@ -19,6 +19,10 @@ export function ClaimSuccessModal({
   claim: Claim | null;
 }) {
   const [reveal, setReveal] = useState(false);
+  const [imgStatus, setImgStatus] = useState<"loading" | "loaded" | "error">(
+    "loading",
+  );
+  const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -27,6 +31,13 @@ export function ClaimSuccessModal({
     }
     setReveal(false);
   }, [open]);
+
+  // Reset the image loading state whenever the moment changes; surface cached
+  // images immediately so the spinner doesn't flash.
+  const imageSrc = claim?.metadata.image;
+  useEffect(() => {
+    setImgStatus(imgRef.current?.complete ? "loaded" : "loading");
+  }, [imageSrc]);
 
   if (!claim) return null;
 
@@ -56,20 +67,44 @@ export function ClaimSuccessModal({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={reveal ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="relative mx-auto mt-3 w-full max-w-[230px] overflow-hidden rounded-2xl border border-border/60 bg-muted/40 p-1.5 shadow-lg"
+            className="relative mx-auto mt-3 flex aspect-[4/5] w-full max-w-[230px] items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-muted/40 p-1.5 shadow-lg"
           >
+            {imgStatus === "loading" && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <Loader2 className="size-6 animate-spin" />
+                <span className="text-[11px] font-medium">
+                  Loading your moment…
+                </span>
+              </div>
+            )}
+            {imgStatus === "error" && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <ImageOff className="size-6" />
+                <span className="text-[11px] font-medium">
+                  Pinning to IPFS…
+                </span>
+              </div>
+            )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              ref={imgRef}
               src={claim.metadata.image}
               alt={`Your captured moment at ${claim.eventTitle}`}
-              className="mx-auto block max-h-[40vh] w-auto rounded-xl object-contain"
+              onLoad={() => setImgStatus("loaded")}
+              onError={() => setImgStatus("error")}
+              className={cn(
+                "block max-h-full w-auto rounded-xl object-contain transition-opacity duration-300",
+                imgStatus === "loaded" ? "opacity-100" : "opacity-0",
+              )}
             />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-1 bg-gradient-to-t from-black/55 to-transparent px-2.5 pb-2 pt-6">
-              <Sparkles className="size-3 text-white/90" />
-              <span className="text-[10px] font-medium text-white/90">
-                Proof you were there
-              </span>
-            </div>
+            {imgStatus === "loaded" && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-1 bg-gradient-to-t from-black/55 to-transparent px-2.5 pb-2 pt-6">
+                <Sparkles className="size-3 text-white/90" />
+                <span className="text-[10px] font-medium text-white/90">
+                  Proof you were there
+                </span>
+              </div>
+            )}
           </motion.div>
 
           <motion.h2
