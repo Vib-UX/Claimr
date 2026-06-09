@@ -47,6 +47,7 @@ export async function claimMoment({
       accessToken,
       imageIpfsUri: capturedImage?.ipfsUri,
       imageGatewayUrl: capturedImage?.gatewayUrl,
+      imageMediaType: capturedImage?.mediaType ?? "image",
     }),
   });
 

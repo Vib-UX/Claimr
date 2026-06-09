@@ -25,9 +25,11 @@ interface ClaimBody {
   email?: string;
   coords?: { lat: number; lng: number };
   accessToken?: string;
-  /** Captured "moment" photo pinned to IPFS (ipfs://… + gateway URL). */
+  /** Captured "moment" pinned to IPFS (ipfs://… + gateway URL). */
   imageIpfsUri?: string;
   imageGatewayUrl?: string;
+  /** Whether the captured moment is a still image or a video clip. */
+  imageMediaType?: "image" | "video";
 }
 
 async function verifyPrivyToken(accessToken?: string): Promise<boolean> {
@@ -51,8 +53,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { slug, address, email, coords, accessToken, imageIpfsUri, imageGatewayUrl } =
-    body;
+  const {
+    slug,
+    address,
+    email,
+    coords,
+    accessToken,
+    imageIpfsUri,
+    imageGatewayUrl,
+    imageMediaType,
+  } = body;
+  const isVideo = imageMediaType === "video";
 
   if (!address || !isAddress(address)) {
     return NextResponse.json({ error: "Invalid wallet address" }, { status: 400 });
@@ -102,16 +113,20 @@ export async function POST(req: Request) {
   // Default token metadata: per-event endpoint + generated SVG artwork.
   let tokenURI = `${origin}/api/metadata/${event.slug}`;
   let image = `${origin}/api/collectible/${event.slug}`;
+  // Video clips populate the ERC-721 `animation_url` (image stays a poster).
+  let animationUrl: string | undefined;
 
   // When the attendee captured a moment and it was pinned to IPFS, pin a fresh
-  // ERC-721 metadata JSON pointing at their photo and use it as the tokenURI so
-  // the NFT image is the captured moment (permanently on IPFS).
+  // ERC-721 metadata JSON pointing at their media and use it as the tokenURI so
+  // the NFT reflects the captured moment (permanently on IPFS).
   if (imageIpfsUri && PINATA_ENABLED) {
     try {
-      const metadataJson = {
+      const metadataJson: Record<string, unknown> = {
         name: event.collectible.name,
         description: event.collectible.description,
-        image: imageIpfsUri,
+        // For a clip, keep the generated artwork as the still poster and add the
+        // video as animation_url; for a photo, use it directly as the image.
+        image: isVideo ? image : imageIpfsUri,
         external_url: `${origin}/event/${event.slug}`,
         attributes: [
           { trait_type: "Event", value: event.title },
@@ -120,14 +135,20 @@ export async function POST(req: Request) {
           { trait_type: "Variant", value: event.collectible.art.variant },
           { trait_type: "Network", value: "Monad Testnet" },
           { trait_type: "Verification", value: "Geo + Email" },
+          { trait_type: "Media", value: isVideo ? "Video" : "Photo" },
         ],
       };
+      if (isVideo) {
+        metadataJson.animation_url = imageIpfsUri;
+        animationUrl = imageGatewayUrl;
+      } else {
+        image = imageGatewayUrl ?? image;
+      }
       const pinnedMeta = await pinJSON(
         metadataJson,
         `claimr-${event.slug}-${Date.now()}.json`,
       );
       tokenURI = pinnedMeta.ipfsUri;
-      image = imageGatewayUrl ?? image;
     } catch (err) {
       // Pinning failed — fall back to the generated artwork so the claim still
       // succeeds.
@@ -141,7 +162,12 @@ export async function POST(req: Request) {
     const result = await mintPoap(event, address, email);
     const claim: Claim = {
       ...result.claim,
-      metadata: { ...result.claim.metadata, image, metadataURI: tokenURI },
+      metadata: {
+        ...result.claim.metadata,
+        image,
+        animationUrl,
+        metadataURI: tokenURI,
+      },
     };
     return NextResponse.json({ claim, onchain: false });
   }
@@ -193,6 +219,7 @@ export async function POST(req: Request) {
       name: `${event.collectible.name} #${tokenId}`,
       description: event.collectible.description,
       image,
+      animationUrl,
       eventId: event.id,
       metadataURI: tokenURI,
       attributes: [
