@@ -295,7 +295,7 @@ export function CaptureMoment({
               a still or during the initial scan. */}
           {!photo && status === "granted" && !scanning && (
             <div className="absolute inset-0">
-              <CollectibleScene art={art} reveal interactive modelUrls={modelUrls} />
+              <CollectibleScene art={art} reveal interactive camera modelUrls={modelUrls} />
             </div>
           )}
 

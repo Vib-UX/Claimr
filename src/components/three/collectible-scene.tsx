@@ -157,11 +157,14 @@ function GltfArtifact({
   reveal,
   position = [0, 0, 0],
   scaleMul = 1,
+  flip = false,
 }: {
   url: string;
   reveal: boolean;
   position?: [number, number, number];
   scaleMul?: number;
+  /** Tumble over the X axis (upside down) instead of the horizontal Y spin. */
+  flip?: boolean;
 }) {
   const group = useRef<THREE.Group>(null);
   const revealRef = useRef(0);
@@ -185,7 +188,11 @@ function GltfArtifact({
       group.current.scale.setScalar(
         revealRef.current * fit * COLLECTIBLE_MODEL_SCALE * scaleMul,
       );
-      group.current.rotation.y += delta * 0.25;
+      if (flip) {
+        group.current.rotation.x += delta * 0.25;
+      } else {
+        group.current.rotation.y += delta * 0.25;
+      }
     }
   });
 
@@ -208,6 +215,7 @@ export default function CollectibleScene({
   interactive = true,
   modelUrl,
   modelUrls,
+  camera = false,
 }: {
   art: CollectibleArt;
   reveal?: boolean;
@@ -217,6 +225,9 @@ export default function CollectibleScene({
   modelUrl?: string;
   /** Render multiple models side by side (e.g. a paired camera reveal). */
   modelUrls?: string[];
+  /** AR camera-feed mode: render smaller and tumble upside down (X axis) so
+   *  the collectible sits nicely over a portrait mobile viewport. */
+  camera?: boolean;
 }) {
   const effectiveModel = modelUrl ?? art.modelUrl ?? COLLECTIBLE_MODEL_URL;
   const models =
@@ -247,13 +258,16 @@ export default function CollectibleScene({
               const count = models.length;
               const x = count === 1 ? 0 : (i - (count - 1) / 2) * 2.3;
               const scaleMul = count > 1 ? 0.62 : 1;
+              // On the mobile camera feed keep the collectible compact.
+              const cameraMul = camera ? 0.7 : 1;
               return (
                 <GltfArtifact
                   key={`${url}-${i}`}
                   url={url}
                   reveal={reveal}
                   position={[x, 0, 0]}
-                  scaleMul={scaleMul}
+                  scaleMul={scaleMul * cameraMul}
+                  flip={camera}
                 />
               );
             })
