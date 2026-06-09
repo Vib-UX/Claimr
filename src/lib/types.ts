@@ -51,6 +51,9 @@ export interface CollectibleArt {
   /** Short label etched onto the artifact. */
   edition: string;
   variant: "capsule" | "prism" | "core";
+  /** Optional per-collectible .glb (in /public/models). Falls back to the
+   *  global model, then the procedural artifact, when absent. */
+  modelUrl?: string;
 }
 
 export interface ClaimrEvent {

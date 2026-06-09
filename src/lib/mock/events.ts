@@ -89,7 +89,13 @@ export const EVENTS: ClaimrEvent[] = [
       symbol: "BLITZ",
       description:
         "A verified onchain memory from Monad Blitz NYC. Proof you were there.",
-      art: { hue: 258, accentHue: 200, edition: "NYC · 2026", variant: "capsule" },
+      art: {
+        hue: 258,
+        accentHue: 200,
+        edition: "NYC · 2026",
+        variant: "capsule",
+        modelUrl: "/models/Meshy_AI_Purple_Sad_Plush_Mons_0609185227_texture.glb",
+      },
     },
     chainId: 10143,
   },

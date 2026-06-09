@@ -216,8 +216,11 @@ export default function CollectibleScene({
 
       <Suspense fallback={null}>
         <Float speed={1.4} rotationIntensity={0.5} floatIntensity={0.7}>
-          {COLLECTIBLE_MODEL_URL ? (
-            <GltfArtifact url={COLLECTIBLE_MODEL_URL} reveal={reveal} />
+          {art.modelUrl || COLLECTIBLE_MODEL_URL ? (
+            <GltfArtifact
+              url={(art.modelUrl ?? COLLECTIBLE_MODEL_URL) as string}
+              reveal={reveal}
+            />
           ) : (
             <Artifact art={art} reveal={reveal} />
           )}
