@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none">
+  <defs>
+    <linearGradient id="claimr-logo" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6c4cf1" />
+      <stop offset="55%" stop-color="#836ef9" />
+      <stop offset="100%" stop-color="#36b6ff" />
+    </linearGradient>
+  </defs>
+  <g transform="translate(4 8)">
+    <rect x="0" y="0" width="32" height="32" rx="9" fill="url(#claimr-logo)" />
+    <path
+      d="M16 7.4a6.1 6.1 0 0 1 6.1 6.1c0 4.3-6.1 10.8-6.1 10.8S9.9 17.8 9.9 13.5A6.1 6.1 0 0 1 16 7.4z"
+      fill="#ffffff"
+    />
+    <path
+      d="M13.1 13.5l2 2 3.7-3.9"
+      stroke="#6c4cf1"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+  </g>
+  <text
+    x="48"
+    y="31"
+    font-family="'Space Grotesk', 'Geist', system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    font-size="22"
+    font-weight="600"
+    letter-spacing="-0.5"
+    fill="#14131a"
+  >Claimr</text>
+</svg>

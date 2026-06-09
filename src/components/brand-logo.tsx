@@ -24,13 +24,17 @@ export function BrandMark({ className }: { className?: string }) {
         fill="url(#claimr-mark)"
       />
       <path
-        d="M21.5 12.2a6.2 6.2 0 1 0 0 7.6"
-        stroke="white"
-        strokeWidth="2.6"
+        d="M16 7.4a6.1 6.1 0 0 1 6.1 6.1c0 4.3-6.1 10.8-6.1 10.8S9.9 17.8 9.9 13.5A6.1 6.1 0 0 1 16 7.4z"
+        fill="white"
+      />
+      <path
+        d="M13.1 13.5l2 2 3.7-3.9"
+        stroke="var(--aurora-2)"
+        strokeWidth="2"
         strokeLinecap="round"
+        strokeLinejoin="round"
         fill="none"
       />
-      <circle cx="22" cy="16" r="2.1" fill="white" />
     </svg>
   );
 }
