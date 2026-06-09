@@ -192,7 +192,7 @@ cd contracts && forge verify-contract <ADDR> src/ClaimrPOAP.sol:ClaimrPOAP \
 ## 🎨 Copy
 
 > Capture the moment. · Proof you were there. · Claim your moment onchain. ·
-> Attend, verify, mint. · A collectible memory for Monad events.
+> Attend, verify, mint. · A collectible memory for every event, onchain on Monad.
 
 ---
 

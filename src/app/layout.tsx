@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Claimr — Capture the moment.",
     description:
-      "Attend, verify, mint. A collectible memory for Monad events.",
+      "Attend, verify, mint. A collectible memory for every event, onchain on Monad.",
     type: "website",
   },
 };

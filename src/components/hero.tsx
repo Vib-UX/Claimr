@@ -25,7 +25,7 @@ export function Hero({ event }: { event: ClaimrEvent }) {
         >
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground">
             <Sparkles className="size-3.5 text-[var(--monad)]" />
-            A collectible memory for Monad events
+            A collectible memory for every event — onchain on Monad
           </span>
 
           <h1 className="mt-5 font-display text-5xl font-bold leading-[1.05] tracking-tight text-balance sm:text-6xl">

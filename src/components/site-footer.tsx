@@ -13,8 +13,8 @@ export function SiteFooter() {
               <span className="font-display text-lg font-semibold">Claimr</span>
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
-              A collectible memory for Monad events. Attend, verify, mint —
-              proof you were there, onchain forever.
+              A collectible memory for every event you attend. Attend, verify,
+              mint — proof you were there, onchain on Monad forever.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm sm:grid-cols-3">
