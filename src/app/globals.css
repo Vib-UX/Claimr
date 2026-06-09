@@ -1,0 +1,227 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  Claimr design system
+  Luma-inspired calm + Monad-native energy.
+  Light: warm paper, deep ink, restrained violet accent.
+  Dark: deep indigo-black, soft glow, vivid-but-controlled violet.
+*/
+
+:root {
+  --background: #f7f7fb;
+  --foreground: #14131a;
+
+  --card: #ffffff;
+  --card-foreground: #14131a;
+
+  --popover: #ffffff;
+  --popover-foreground: #14131a;
+
+  --primary: #6c4cf1;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f0eefc;
+  --secondary-foreground: #2a2350;
+
+  --muted: #f1f1f6;
+  --muted-foreground: #6b6878;
+
+  --accent: #ece8fe;
+  --accent-foreground: #3a2db5;
+
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+
+  --success: #2fa86b;
+  --warning: #d99a14;
+
+  --border: #e7e6ee;
+  --input: #e7e6ee;
+  --ring: #836ef9;
+
+  /* Monad-native brand */
+  --monad: #836ef9;
+  --monad-deep: #4f3ed6;
+  --aurora-1: #836ef9;
+  --aurora-2: #6c4cf1;
+  --aurora-3: #36b6ff;
+
+  --radius: 1rem;
+}
+
+.dark {
+  --background: #08070e;
+  --foreground: #f3f2f8;
+
+  --card: #100e1a;
+  --card-foreground: #f3f2f8;
+
+  --popover: #14121f;
+  --popover-foreground: #f3f2f8;
+
+  --primary: #8c79ff;
+  --primary-foreground: #0a0814;
+
+  --secondary: #1a1730;
+  --secondary-foreground: #e4e0ff;
+
+  --muted: #16141f;
+  --muted-foreground: #9c98ac;
+
+  --accent: #211c3d;
+  --accent-foreground: #c7bdff;
+
+  --destructive: #ff6166;
+  --destructive-foreground: #1a0608;
+
+  --success: #43d08a;
+  --warning: #f0bf52;
+
+  --border: #221f30;
+  --input: #221f30;
+  --ring: #836ef9;
+
+  --monad: #836ef9;
+  --monad-deep: #6c4cf1;
+  --aurora-1: #9b8bff;
+  --aurora-2: #6c4cf1;
+  --aurora-3: #3fc1ff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-monad: var(--monad);
+  --color-monad-deep: var(--monad-deep);
+
+  --radius-sm: calc(var(--radius) - 0.5rem);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.5rem);
+  --radius-2xl: calc(var(--radius) + 1rem);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-display), var(--font-geist-sans), sans-serif;
+
+  --animate-shimmer: shimmer 2.5s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-aurora: aurora 14s ease infinite;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background-color: color-mix(in oklab, var(--monad) 30%, transparent);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes aurora {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Utility primitives used across the app */
+.text-balance {
+  text-wrap: balance;
+}
+
+.aurora-text {
+  background: linear-gradient(
+    100deg,
+    var(--aurora-1),
+    var(--aurora-3),
+    var(--aurora-2),
+    var(--aurora-1)
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: var(--animate-aurora);
+}
+
+.glass {
+  background: color-mix(in oklab, var(--card) 72%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
+
+.card-glow {
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, var(--foreground) 5%, transparent) inset,
+    0 20px 50px -24px color-mix(in oklab, var(--monad) 45%, transparent);
+}
+
+.hairline {
+  border: 1px solid color-mix(in oklab, var(--border) 100%, transparent);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
