@@ -157,14 +157,11 @@ function GltfArtifact({
   reveal,
   position = [0, 0, 0],
   scaleMul = 1,
-  flip = false,
 }: {
   url: string;
   reveal: boolean;
   position?: [number, number, number];
   scaleMul?: number;
-  /** Tumble over the X axis (upside down) instead of the horizontal Y spin. */
-  flip?: boolean;
 }) {
   const group = useRef<THREE.Group>(null);
   const revealRef = useRef(0);
@@ -188,11 +185,7 @@ function GltfArtifact({
       group.current.scale.setScalar(
         revealRef.current * fit * COLLECTIBLE_MODEL_SCALE * scaleMul,
       );
-      if (flip) {
-        group.current.rotation.x += delta * 0.25;
-      } else {
-        group.current.rotation.y += delta * 0.25;
-      }
+      group.current.rotation.y += delta * 0.25;
     }
   });
 
@@ -225,8 +218,8 @@ export default function CollectibleScene({
   modelUrl?: string;
   /** Render multiple models side by side (e.g. a paired camera reveal). */
   modelUrls?: string[];
-  /** AR camera-feed mode: render smaller and tumble upside down (X axis) so
-   *  the collectible sits nicely over a portrait mobile viewport. */
+  /** AR camera-feed mode: render smaller and stack the models vertically so
+   *  they sit nicely over a portrait mobile viewport. */
   camera?: boolean;
 }) {
   const effectiveModel = modelUrl ?? art.modelUrl ?? COLLECTIBLE_MODEL_URL;
@@ -272,7 +265,6 @@ export default function CollectibleScene({
                   reveal={reveal}
                   position={position}
                   scaleMul={scaleMul * cameraMul}
-                  flip={camera}
                 />
               );
             })
