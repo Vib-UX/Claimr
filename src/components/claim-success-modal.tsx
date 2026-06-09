@@ -7,7 +7,6 @@ import { ArrowUpRight, Sparkles } from "lucide-react";
 import type { Claim } from "@/lib/types";
 import { Modal } from "@/components/ui/modal";
 import { buttonVariants } from "@/components/ui/button";
-import { Collectible3DViewer } from "@/components/collectible-3d-viewer";
 import { shortenAddress } from "@/lib/utils";
 
 export function ClaimSuccessModal({
@@ -50,12 +49,28 @@ export function ClaimSuccessModal({
             Claimed onchain
           </motion.div>
 
-          <Collectible3DViewer
-            art={claim.art}
-            reveal={reveal}
-            hint={false}
-            className="mx-auto mt-2 max-w-[300px]"
-          />
+          {/* The captured moment pinned to IPFS (already composited with the
+              collectible). Falls back to the generated collectible artwork when
+              the attendee claimed without a photo. */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={reveal ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="relative mx-auto mt-3 w-full max-w-[230px] overflow-hidden rounded-2xl border border-border/60 shadow-lg"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={claim.metadata.image}
+              alt={`Your captured moment at ${claim.eventTitle}`}
+              className="aspect-[4/5] w-full bg-muted object-cover"
+            />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-1 bg-gradient-to-t from-black/55 to-transparent px-2.5 pb-2 pt-6">
+              <Sparkles className="size-3 text-white/90" />
+              <span className="text-[10px] font-medium text-white/90">
+                Proof you were there
+              </span>
+            </div>
+          </motion.div>
 
           <motion.h2
             initial={{ opacity: 0, y: 10 }}

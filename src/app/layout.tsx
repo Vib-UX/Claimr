@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -43,6 +43,22 @@ export const metadata: Metadata = {
       "Attend, verify, mint. A collectible memory for every event, onchain on Monad.",
     type: "website",
   },
+  applicationName: "Claimr",
+  appleWebApp: {
+    capable: true,
+    title: "Claimr",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#08070e" },
+  ],
+  // Let content extend under the notch / home indicator so the safe-area
+  // insets used across the app take effect when installed to the home screen.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
