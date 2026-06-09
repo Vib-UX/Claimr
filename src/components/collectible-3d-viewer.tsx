@@ -29,6 +29,8 @@ interface Props {
   imageUrl?: string;
   /** Explicit model to rotate (e.g. the event's Blitz collectible). */
   modelUrl?: string;
+  /** Multiplier on the rotating model's size. */
+  modelScale?: number;
 }
 
 export function Collectible3DViewer({
@@ -39,6 +41,7 @@ export function Collectible3DViewer({
   hint = true,
   imageUrl,
   modelUrl,
+  modelScale = 1,
 }: Props) {
   return (
     <motion.div
@@ -72,6 +75,7 @@ export function Collectible3DViewer({
           reveal={reveal}
           interactive={interactive}
           modelUrl={modelUrl}
+          modelScale={modelScale}
         />
       </div>
       {hint && interactive && (

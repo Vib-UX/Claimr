@@ -34,7 +34,7 @@ export default function CollectiblePage({
   if (!mounted) {
     return (
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
-        <Skeleton className="aspect-square w-full rounded-3xl" />
+        <Skeleton className="mx-auto aspect-[4/5] w-full max-w-sm rounded-3xl" />
         <div className="space-y-4">
           <Skeleton className="h-8 w-2/3" />
           <Skeleton className="h-4 w-full" />
@@ -81,8 +81,9 @@ export default function CollectiblePage({
             art={claim.art}
             imageUrl={claim.metadata.image}
             modelUrl={heroModelUrl}
+            modelScale={0.6}
             hint={false}
-            className="mx-auto max-w-md"
+            className="mx-auto aspect-[4/5] max-w-sm"
           />
         </motion.div>
 

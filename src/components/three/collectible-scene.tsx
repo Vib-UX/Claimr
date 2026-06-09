@@ -242,6 +242,7 @@ export default function CollectibleScene({
   modelUrl,
   modelUrls,
   camera = false,
+  modelScale = 1,
 }: {
   art: CollectibleArt;
   reveal?: boolean;
@@ -254,6 +255,9 @@ export default function CollectibleScene({
   /** AR camera-feed mode: render smaller and stack the models vertically so
    *  they sit nicely over a portrait mobile viewport. */
   camera?: boolean;
+  /** Extra multiplier on the model size (e.g. shrink a model floating over a
+   *  captured photo so it reads as an accent, not a cover). */
+  modelScale?: number;
 }) {
   const effectiveModel = modelUrl ?? art.modelUrl ?? COLLECTIBLE_MODEL_URL;
   const models =
@@ -264,7 +268,7 @@ export default function CollectibleScene({
         : [];
 
   const count = models.length;
-  const groupScaleMul = count > 1 ? 0.62 : 1;
+  const groupScaleMul = (count > 1 ? 0.62 : 1) * modelScale;
   const cameraMul = camera ? 0.7 : 1;
   const spread = count > 1 ? ((count - 1) / 2) * 2.3 : 0;
   // Rendered half-size of one model (its max dimension is normalized to
